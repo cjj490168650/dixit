@@ -792,17 +792,17 @@ void end_game(int64_t Group)
 	time(&rawtime);
 	tm *now_time = localtime(&rawtime);
 	//CQ_sendGroupMsg(ac, Group, (date_d(now_time) + " " + date_d(pre_upd)).c_str());
-	if (date_d(now_time) != date_d(pre_upd))
+	if (date_d(now_time).compare(date_d(pre_upd)))
 	{
 		score_d.clear();
 		win_d.clear();
 	}
-	if (date_w(now_time) != date_w(pre_upd))
+	if (date_w(now_time).compare(date_w(pre_upd)))
 	{
 		score_w.clear();
 		win_w.clear();
 	}
-	if (date_m(now_time) != date_m(pre_upd))
+	if (date_m(now_time).compare(date_m(pre_upd)))
 	{
 		score_m.clear();
 		win_m.clear();
@@ -1147,7 +1147,9 @@ CQEVENT(int32_t, __eventPrivateMsg, 24)(int32_t subType, int32_t msgId, int64_t 
 			<< "您的本月得分：" << score_m[fromQQ] << "\n"
 			<< "您的今日获胜数：" << win_d[fromQQ] << "\n"
 			<< "您的本周获胜数：" << win_w[fromQQ] << "\n"
-			<< "您的本月获胜数：" << win_m[fromQQ] << "\n";
+			<< "您的本月获胜数：" << win_m[fromQQ];
+		string s_tmp = ss.str();
+		CQ_sendPrivateMsg(ac, fromQQ, s_tmp.c_str());
 		return EVENT_IGNORE;
 	}
 	if (in_game[fromQQ])
