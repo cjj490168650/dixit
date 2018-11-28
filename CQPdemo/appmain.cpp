@@ -31,7 +31,7 @@
 
 using namespace std;
 
-const int card_cnt = 394;
+int card_cnt;
 map <int64_t, int> player_cnt;
 map <int64_t, int> game_status;
 map <int64_t, int> game_round;
@@ -63,7 +63,6 @@ map <int64_t, int> win_d;
 map <int64_t, int> win_w;
 map <int64_t, int> win_m;
 map <int64_t, string> player_ID;
-tm *pre_upd;
 vector <string> URL;
 
 int ac = -1; //AuthCode 调用酷Q的方法时需要用到
@@ -87,6 +86,7 @@ void get_url()
 		ifs >> tmp;
 		URL.push_back(tmp);
 	}
+	card_cnt = URL.size();
 	ifs.close();
 }
 
@@ -130,36 +130,32 @@ void read_score()
 	time_t rawtime;
 	time(&rawtime);
 	tm *now_time = localtime(&rawtime);
-	pre_upd = now_time;
 	//printf("%d %d %d", now_time->tm_year + 1900, now_time->tm_mon + 1, now_time->tm_mday);
 	ifstream ifs;
 	ifs.open("C:\\Users\\Administrator\\Desktop\\CQP\\data\\score\\dixit\\day"+date_d(now_time));
-	while (ifs && !ifs.eof())
+	while (ifs >> QQ >> Score >> Win)
 	{
-		ifs >> QQ >> Score >> Win;
-		score_d[QQ] = Score;
-		win_d[QQ] = Win;
+		score_d[QQ] += Score;
+		win_d[QQ] += Win;
 	}
 	ifs.close();
 	ifs.open("C:\\Users\\Administrator\\Desktop\\CQP\\data\\score\\dixit\\week"+date_w(now_time));
-	while (ifs && !ifs.eof())
+	while (ifs >> QQ >> Score >> Win)
 	{
-		ifs >> QQ >> Score >> Win;
-		score_w[QQ] = Score;
-		win_w[QQ] = Win;
+		score_w[QQ] += Score;
+		win_w[QQ] += Win;
 	}
 	ifs.close();
 	ifs.open("C:\\Users\\Administrator\\Desktop\\CQP\\data\\score\\dixit\\mon"+date_m(now_time));
-	while (ifs && !ifs.eof())
+	while (ifs >> QQ >> Score >> Win)
 	{
-		ifs >> QQ >> Score >> Win;
-		score_m[QQ] = Score;
-		win_m[QQ] = Win;
+		score_m[QQ] += Score;
+		win_m[QQ] += Win;
 	}
 	ifs.close();
 }
 
-void write_score()
+/*void write_score()
 {
 	time_t rawtime;
 	time(&rawtime);
@@ -184,7 +180,7 @@ void write_score()
 		ofs << it->first << " " << it->second << " " << win_m[it->first] << "\n";
 	}
 	ofs.close();
-}
+}*/
 
 bool cmp(pair<int64_t, int> p1, pair<int64_t, int> p2)
 {
@@ -196,22 +192,7 @@ void show_score(int num,int64_t Group)
 	time_t rawtime;
 	time(&rawtime);
 	tm *now_time = localtime(&rawtime);
-	if (date_d(now_time).compare(date_d(pre_upd)))
-	{
-		score_d.clear();
-		win_d.clear();
-	}
-	if (date_w(now_time).compare(date_w(pre_upd)))
-	{
-		score_w.clear();
-		win_w.clear();
-	}
-	if (date_m(now_time).compare(date_m(pre_upd)))
-	{
-		score_m.clear();
-		win_m.clear();
-	}
-	pre_upd = now_time;
+	read_score();
 	map <int64_t, int> *mp1, *mp2;
 	map <int64_t, int>::iterator it;
 	ostringstream ss;
@@ -301,7 +282,7 @@ CQEVENT(int32_t, __eventStartup, 0)() {
 * 本函数调用完毕后，酷Q将很快关闭，请不要再通过线程等方式执行其他代码。
 */
 CQEVENT(int32_t, __eventExit, 0)() {
-	write_score();
+	//write_score();
 	return 0;
 }
 
@@ -313,7 +294,7 @@ CQEVENT(int32_t, __eventExit, 0)() {
 */
 CQEVENT(int32_t, __eventEnable, 0)() {
 	enabled = true;
-	read_score();
+	//read_score();
 	get_url();
 	return 0;
 }
@@ -394,7 +375,7 @@ void deliver_card(int64_t QQ)
 {
 	while (player_card[QQ].size() < 6)
 	{
-		int rnd = get_rand(card_cnt) + 1;
+		int rnd = get_rand(card_cnt);
 		if (!cards[in_game[QQ]][rnd])
 		{
 			player_card[QQ].push_back(rnd);
@@ -409,7 +390,7 @@ void change_card(int64_t Group, int64_t QQ,int num)
 	int rnd;
 	do
 	{
-		rnd = get_rand(card_cnt) + 1;
+		rnd = get_rand(card_cnt);
 	} while (cards[Group][rnd]);
 	cards[Group][rnd] = true;
 	player_card[QQ][num] = rnd;
@@ -425,49 +406,45 @@ void end_game(int64_t Group)
 	time(&rawtime);
 	tm *now_time = localtime(&rawtime);
 	//CQ_sendGroupMsg(ac, Group, (date_d(now_time) + " " + date_d(pre_upd)).c_str());
-	if (date_d(now_time).compare(date_d(pre_upd)))
-	{
-		score_d.clear();
-		win_d.clear();
-	}
-	if (date_w(now_time).compare(date_w(pre_upd)))
-	{
-		score_w.clear();
-		win_w.clear();
-	}
-	if (date_m(now_time).compare(date_m(pre_upd)))
-	{
-		score_m.clear();
-		win_m.clear();
-	}
-	pre_upd = now_time;
 	for (int i = 0; i < player_cnt[Group]; i++)
 	{
 		if (player_quit[game_player[Group][i]]) continue;
 		in_game[game_player[Group][i]] = 0;
 		CQ_sendPrivateMsg(ac, game_player[Group][i], "游戏结束");
 		if (player_score[game_player[Group][i]] > maxs) maxs = player_score[game_player[Group][i]];
-		score_d[game_player[Group][i]] += player_score[game_player[Group][i]];
-		score_w[game_player[Group][i]] += player_score[game_player[Group][i]];
-		score_m[game_player[Group][i]] += player_score[game_player[Group][i]];
 	}
+	ofstream fd("C:\\Users\\Administrator\\Desktop\\CQP\\data\\score\\dixit\\day" + date_d(now_time), ofstream::app);
+	ofstream fw("C:\\Users\\Administrator\\Desktop\\CQP\\data\\score\\dixit\\week" + date_w(now_time), ofstream::app);
+	ofstream fm("C:\\Users\\Administrator\\Desktop\\CQP\\data\\score\\dixit\\mon" + date_m(now_time), ofstream::app);
 	for (int i = 0; i < player_cnt[Group]; i++)
 	{
 		if (player_quit[game_player[Group][i]]) continue;
+		fd << game_player[Group][i] << " " << player_score[game_player[Group][i]] << " ";
+		fw << game_player[Group][i] << " " << player_score[game_player[Group][i]] << " ";
+		fm << game_player[Group][i] << " " << player_score[game_player[Group][i]] << " ";
 		if (player_score[game_player[Group][i]] == maxs)
 		{
 			AT(Group, game_player[Group][i], "获胜！");
-			win_d[game_player[Group][i]]++;
-			win_w[game_player[Group][i]]++;
-			win_m[game_player[Group][i]]++;
+			fd << "1\n";
+			fw << "1\n";
+			fm << "1\n";
+		}
+		else
+		{
+			fd << "0\n";
+			fw << "0\n";
+			fm << "0\n";
 		}
 	}
+	fd.close();
+	fw.close();
+	fm.close();
 	game_player[Group].clear();
 	ostringstream ss;
 	ss << "C:\\Users\\Administrator\\Desktop\\CQP\\data\\ingame\\" << Group;
 	string s_tmp = ss.str();
 	remove(s_tmp.c_str());
-	write_score();
+	//write_score();
 }
 
 void quit_game(int64_t QQ);
@@ -761,7 +738,7 @@ CQEVENT(int32_t, __eventPrivateMsg, 24)(int32_t subType, int32_t msgId, int64_t 
 		time_t rawtime;
 		time(&rawtime);
 		tm *now_time = localtime(&rawtime);
-		CQ_sendPrivateMsg(ac, fromQQ, (date_d(now_time) + " " + date_d(pre_upd)).c_str());
+		CQ_sendPrivateMsg(ac, fromQQ, date_d(now_time).c_str());
 		return EVENT_IGNORE;
 	}
 	if (!strcmp(msg, "cardtst"))
@@ -770,19 +747,6 @@ CQEVENT(int32_t, __eventPrivateMsg, 24)(int32_t subType, int32_t msgId, int64_t 
 		{
 			CQ_sendPrivateMsg(ac, fromQQ, make_card(i,i).c_str());
 		}
-		return EVENT_IGNORE;
-	}
-	if (!strcmp(msg, "查询dixit"))
-	{
-		ostringstream ss;
-		ss << "您的今日得分：" << score_d[fromQQ] << "\n"
-			<< "您的本周得分：" << score_w[fromQQ] << "\n"
-			<< "您的本月得分：" << score_m[fromQQ] << "\n"
-			<< "您的今日获胜数：" << win_d[fromQQ] << "\n"
-			<< "您的本周获胜数：" << win_w[fromQQ] << "\n"
-			<< "您的本月获胜数：" << win_m[fromQQ];
-		string s_tmp = ss.str();
-		CQ_sendPrivateMsg(ac, fromQQ, s_tmp.c_str());
 		return EVENT_IGNORE;
 	}
 	if (in_game[fromQQ])
