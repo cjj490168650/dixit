@@ -56,12 +56,9 @@ map <int64_t, bool> ans_right;
 map <int64_t, bool> player_quit;
 map <int64_t, int> quit_cnt;
 map <int64_t, time_t> pre_sign;
-map <int64_t, int> score_d;
-map <int64_t, int> score_w;
-map <int64_t, int> score_m;
-map <int64_t, int> win_d;
-map <int64_t, int> win_w;
-map <int64_t, int> win_m;
+map <int64_t, int> rank_score;
+map <int64_t, int> rank_win;
+map <int64_t, int> rank_high;
 map <int64_t, string> player_ID;
 vector <string> URL;
 
@@ -76,8 +73,20 @@ CQEVENT(const char*, AppInfo, 0)() {
 	return CQAPPINFO;
 }
 
+int days(int y,int m)
+{
+	if (m == 1 || m == 3 || m == 5 || m == 7 || m == 8 || m == 10 || m == 12) return 31;
+	if (m == 4 || m == 6 || m == 9 || m == 11) return 30;
+	if (m == 2)
+	{
+		if ((y % 400 == 0) || (y % 4 == 0 && y % 100 != 0)) return 29;
+		else return 28;
+	}
+}
+
 void get_url()
 {
+	URL.clear();
 	ifstream ifs("C:\\Users\\Administrator\\Desktop\\CQP\\data\\url.txt");
 	int num;
 	string tmp;
@@ -103,9 +112,25 @@ string date_d(tm *now_time)
 string date_w(tm *now_time)
 {
 	ostringstream ss;
-	ss << now_time->tm_year + 1900
-		<< setfill('0') << setw(2) << now_time->tm_mon + 1
-		<< setfill('0') << setw(2) << now_time->tm_mday - now_time->tm_wday;
+	if (now_time->tm_mday - now_time->tm_wday > 0)
+	{
+		ss << now_time->tm_year + 1900
+			<< setfill('0') << setw(2) << now_time->tm_mon + 1
+			<< setfill('0') << setw(2) << now_time->tm_mday - now_time->tm_wday;
+	}
+	else
+	{
+		if (now_time->tm_mon)
+		{
+			ss << now_time->tm_year + 1900
+				<< setfill('0') << setw(2) << now_time->tm_mon
+				<< setfill('0') << setw(2) << days(now_time->tm_year + 1900, now_time->tm_mon) + now_time->tm_mday - now_time->tm_wday;
+		}
+		else
+		{
+			ss << now_time->tm_year + 1900 - 1 << 12 << 31 + now_time->tm_mday - now_time->tm_wday;
+		}
+	}
 	return ss.str();
 }
 
@@ -117,70 +142,29 @@ string date_m(tm *now_time)
 	return ss.str();
 }
 
-void read_score()
+void read_score(int num)
 {
 	int64_t QQ;
 	int Score,Win;
-	score_d.clear(); score_d[0] = 0;
-	score_w.clear(); score_w[0] = 0;
-	score_m.clear(); score_m[0] = 0;
-	win_d.clear(); win_d[0] = 0;
-	win_w.clear(); win_w[0] = 0;
-	win_m.clear(); win_m[0] = 0;
+	rank_score.clear();
+	rank_win.clear();
+	rank_high.clear();
 	time_t rawtime;
 	time(&rawtime);
 	tm *now_time = localtime(&rawtime);
 	//printf("%d %d %d", now_time->tm_year + 1900, now_time->tm_mon + 1, now_time->tm_mday);
 	ifstream ifs;
-	ifs.open("C:\\Users\\Administrator\\Desktop\\CQP\\data\\score\\dixit\\day"+date_d(now_time));
+	if (num==1) ifs.open("C:\\Users\\Administrator\\Desktop\\CQP\\data\\score\\dixit\\day"+date_d(now_time));
+	if (num==2) ifs.open("C:\\Users\\Administrator\\Desktop\\CQP\\data\\score\\dixit\\week" + date_w(now_time));
+	if (num==3) ifs.open("C:\\Users\\Administrator\\Desktop\\CQP\\data\\score\\dixit\\mon" + date_m(now_time));
 	while (ifs >> QQ >> Score >> Win)
 	{
-		score_d[QQ] += Score;
-		win_d[QQ] += Win;
-	}
-	ifs.close();
-	ifs.open("C:\\Users\\Administrator\\Desktop\\CQP\\data\\score\\dixit\\week"+date_w(now_time));
-	while (ifs >> QQ >> Score >> Win)
-	{
-		score_w[QQ] += Score;
-		win_w[QQ] += Win;
-	}
-	ifs.close();
-	ifs.open("C:\\Users\\Administrator\\Desktop\\CQP\\data\\score\\dixit\\mon"+date_m(now_time));
-	while (ifs >> QQ >> Score >> Win)
-	{
-		score_m[QQ] += Score;
-		win_m[QQ] += Win;
+		rank_score[QQ] += Score;
+		rank_win[QQ] += Win;
+		rank_high[QQ] = max(rank_high[QQ], Score);
 	}
 	ifs.close();
 }
-
-/*void write_score()
-{
-	time_t rawtime;
-	time(&rawtime);
-	tm *now_time = localtime(&rawtime);
-	ofstream ofs;
-	map <int64_t, int>::iterator it;
-	ofs.open("C:\\Users\\Administrator\\Desktop\\CQP\\data\\score\\dixit\\day"+date_d(now_time));
-	for (it = score_d.begin(); it != score_d.end(); it++)
-	{
-		ofs << it->first << " " << it->second << " " << win_d[it->first] << "\n";
-	}
-	ofs.close();
-	ofs.open("C:\\Users\\Administrator\\Desktop\\CQP\\data\\score\\dixit\\week"+date_w(now_time));
-	for (it = score_w.begin(); it != score_w.end(); it++)
-	{
-		ofs << it->first << " " << it->second << " " << win_w[it->first] << "\n";
-	}
-	ofs.close();
-	ofs.open("C:\\Users\\Administrator\\Desktop\\CQP\\data\\score\\dixit\\mon"+date_m(now_time));
-	for (it = score_m.begin(); it != score_m.end(); it++)
-	{
-		ofs << it->first << " " << it->second << " " << win_m[it->first] << "\n";
-	}
-	ofs.close();
-}*/
 
 bool cmp(pair<int64_t, int> p1, pair<int64_t, int> p2)
 {
@@ -192,29 +176,25 @@ void show_score(int num,int64_t Group)
 	time_t rawtime;
 	time(&rawtime);
 	tm *now_time = localtime(&rawtime);
-	read_score();
-	map <int64_t, int> *mp1, *mp2;
+	read_score(num);
 	map <int64_t, int>::iterator it;
 	ostringstream ss;
 	int tmp;
 	if (num == 1)
 	{
-		mp1 = &score_d; mp2 = &win_d;
 		ss << "【Dixit 日榜】 (" + date_d(now_time) + ")\n";
 	}
 	if (num == 2)
 	{
-		mp1 = &score_w; mp2 = &win_w;
 		ss << "【Dixit 周榜】 (" + date_w(now_time) + ")\n";
 	}
 	if (num == 3)
 	{
-		mp1 = &score_m; mp2 = &win_m;
 		ss << "【Dixit 月榜】 (" + date_m(now_time) + ")\n";
 	}
-	ss << "得分Top5：\n";
+	ss << "总分Top5：\n";
 	vector <pair<int64_t,int>> Score;
-	for (it = mp1->begin(); it != mp1->end(); it++)
+	for (it = rank_score.begin(); it != rank_score.end(); it++)
 	{
 		Score.push_back(make_pair(it->first,it->second));
 	}
@@ -226,9 +206,23 @@ void show_score(int num,int64_t Group)
 		if (i < Score.size() && Score[i].second) ss << Score[i].first << " " << Score[i].second;
 		ss << "\n";
 	}
+	ss << "单局Top5：\n";
+	vector <pair<int64_t, int>> High;
+	for (it = rank_high.begin(); it != rank_high.end(); it++)
+	{
+		High.push_back(make_pair(it->first, it->second));
+	}
+	sort(High.begin(), High.end(), cmp);
+	for (int i = 0; i < 5 || (i < High.size() && High[i].second && High[i].second == High[i - 1].second); i++)
+	{
+		if (i == 0 || (i < High.size() && High[i].second != High[i - 1].second)) tmp = i + 1;
+		ss << tmp << ". ";
+		if (i < High.size() && High[i].second) ss << High[i].first << " " << High[i].second;
+		ss << "\n";
+	}
 	ss << "获胜数Top5：\n";
 	vector <pair<int64_t, int>> Win;
-	for (it = mp2->begin(); it != mp2->end(); it++)
+	for (it = rank_win.begin(); it != rank_win.end(); it++)
 	{
 		Win.push_back(make_pair(it->first, it->second));
 	}
@@ -237,7 +231,7 @@ void show_score(int num,int64_t Group)
 	{
 		if (i == 0 || (i < Win.size() && Win[i].second != Win[i - 1].second)) tmp = i + 1;
 		ss << tmp << ". ";
-		if (i < Score.size() && Win[i].second) ss << Win[i].first << " " << Win[i].second;
+		if (i < Win.size() && Win[i].second) ss << Win[i].first << " " << Win[i].second;
 		ss << "\n";
 	}
 	if (num == 1)
@@ -655,8 +649,6 @@ void game_start(int64_t Group)
 	//quit_cnt[Group] = 0;
 	//game_player[Group].clear();
 	cards[Group].clear();
-	cards[Group][79] = true;
-	cards[Group][254] = true;
 	game_rid[Group].clear();
 	card_ori[Group].clear();
 	card_num[Group].clear();
@@ -853,16 +845,12 @@ CQEVENT(int32_t, __eventPrivateMsg, 24)(int32_t subType, int32_t msgId, int64_t 
 * Type=2 群消息
 */
 CQEVENT(int32_t, __eventGroupMsg, 36)(int32_t subType, int32_t msgId, int64_t fromGroup, int64_t fromQQ, const char *fromAnonymous, const char *msg, int32_t font) {
-	/*(if (!strcmp(msg, "[CQ:at,qq=3513312871] 猜歌") && !game_status[fromGroup])
+	if (!strcmp(msg, "[CQ:at,qq=3513312871] 更新牌库"))
 	{
-		other_game[fromGroup] = true;
+		get_url();
+		CQ_sendGroupMsg(ac, fromGroup, "更新成功");
 		return EVENT_IGNORE;
 	}
-	if (fromQQ == 3513312871 && !strcmp(msg, "游戏结束"))
-	{
-		other_game[fromGroup] = false;
-		return EVENT_IGNORE;
-	}*/
 	if (!strcmp(msg, "[CQ:at,qq=3513312871] dixit日榜"))
 	{
 		show_score(1, fromGroup);
